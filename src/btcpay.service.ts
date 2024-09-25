@@ -15,6 +15,9 @@ import { loggerCtx } from './constants';
 import { BTCPayClient } from './btcpay.client';
 import { InvoiceConfirmedWebhookEvent } from './btcpay.types';
 
+const crypto = require('crypto')
+const bodyParser = require('body-parser')
+
 @Injectable()
 export class BTCPayService {
   constructor(
@@ -57,9 +60,9 @@ export class BTCPayService {
   }
 
   async settlePayment(
-    event: InvoiceConfirmedWebhookEvent['event']
+    event: InvoiceConfirmedWebhookEvent['event'], req
   ): Promise<void> {
-    if (event?.type !== 'charge:confirmed') { //need to change
+    if (event?.type !== 'InvoiceSettled') {
       Logger.info(
         `Incoming webhook is of type ${event?.type} for order ${event?.data?.metadata?.orderCode}, not processing this event.`,
         loggerCtx
@@ -72,7 +75,7 @@ export class BTCPayService {
       !event.data.code
     ) {
       throw Error(
-        `Incoming Coinbase webhook is missing metadata.orderCode, metadata.channelToken or code field: ${JSON.stringify(
+        `Incoming BTCPay webhook is missing metadata.orderCode, metadata.channelToken or code field: ${JSON.stringify(
           event.data?.metadata
         )}`
       );
@@ -86,9 +89,31 @@ export class BTCPayService {
       ),
       authorizedAsOwnerOnly: false,
     });
-    const { apiKey, apiUrl, storeId, method } = await this.getBTCPayPaymentMethod(ctx);
+    const { apiKey, apiUrl, storeId, secret, method } = await this.getBTCPayPaymentMethod(ctx);
+    const sigHashAlg = 'sha256'
+    const sigHeaderName = 'BTCPAY-SIG'
+    if (!req.rawBody) {
+      throw Error(
+        `Webhook body empty, cannot check signature`
+      );
+    }
+    const sig = Buffer.from(req.get(sigHeaderName) || '', 'utf8')
+    const hmac = crypto.createHmac(sigHashAlg, secret)
+    const digest = Buffer.from(
+      sigHashAlg + '=' + hmac.update(req.rawBody).digest('hex'),
+      'utf8'
+    )
+    const checksum = Buffer.from(sig, 'utf8')
+    if (
+      checksum.length !== digest.length ||
+      !crypto.timingSafeEqual(digest, checksum)
+    ) {
+      throw Error(
+        `Signature didn't match, possible attacker?`
+      );
+    }
     const client = new BTCPayClient({ apiKey, apiUrl, storeId });
-    const invoice = await client.getCharge(event.data.code);
+    const invoice = await client.getInvoice(event.data.code);
     console.log(JSON.stringify(invoice));
     if (!invoice.data.confirmed_at) { // need to change
       Logger.error(
@@ -151,22 +176,24 @@ export class BTCPayService {
     const apiKey = method.handler.args.find((arg) => arg.name === 'apiKey');
     const apiUrl = method.handler.args.find((arg) => arg.name === 'apiUrl');
     const storeId = method.handler.args.find((arg) => arg.name === 'storeId');
+    const secret = method.handler.args.find((arg) => arg.name === 'secret');
     const redirectUrl = method.handler.args.find(
       (arg) => arg.name === 'redirectUrl'
     );
     if (!apiKey || !redirectUrl || !apiUrl || !storeId) {
       Logger.error(
-        `CreatePaymentIntent failed, because no apiKey/apiUrl/storeId/redirectUrl is configured for ${method.code}`,
+        `CreatePaymentIntent failed, because no apiKey/apiUrl/storeId/secret/redirectUrl is configured for ${method.code}`,
         loggerCtx
       );
       throw Error(
-        `Paymentmethod ${method.code} has no apiKey, apiUrl, storeId, redirectUrl configured`
+        `Paymentmethod ${method.code} has no apiKey, apiUrl, storeId, secret, redirectUrl configured`
       );
     }
     return {
       apiKey: apiKey.value,
       apiUrl: apiUrl.value,
       storeId: storeId.value,
+      secret: secret.value,
       redirectUrl: redirectUrl.value.endsWith('/')
         ? redirectUrl.value.slice(0, -1)
         : redirectUrl.value, // remove appending slash

@@ -30,6 +30,10 @@ export const btcpayHandler = new PaymentMethodHandler({
       type: 'string',
       label: [{ languageCode: LanguageCode.en, value: 'BTCPay Store ID' }],
     },
+    secret: {
+      type: 'string',
+      label: [{ languageCode: LanguageCode.en, value: 'BTCPay Secret' }],
+    },
     redirectUrl: {
       type: 'string',
       label: [{ languageCode: LanguageCode.en, value: 'Redirect URL' }],

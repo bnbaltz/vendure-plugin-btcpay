@@ -90,10 +90,8 @@ export interface InvoiceConfirmedWebhookEvent {
   event?: {
     id?: string;
     type?:
-      | 'charge:created'
-      | 'charge:confirmed'
-      | 'charge:failed'
-      | 'charge:pending';
+      | 'InvoiceSettled'
+      | 'InvoicePaymentSettled';
     data?: {
       id?: string;
       code?: string;
