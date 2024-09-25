@@ -95,21 +95,18 @@ export class BTCPayService {
       authorizedAsOwnerOnly: false,
     });
     const { apiKey, apiUrl, storeId, secret, method } = await this.getBTCPayPaymentMethod(ctx);
-    const sigHashAlg = 'sha256'
-    const sigHeaderName = 'BTCPAY-SIG'
     const rawVar = (req as FirebaseRequest).rawBody;
     if (!rawVar) {
       throw Error(
         `Webhook body empty, cannot check signature`
       );
     }
-    const sig = Buffer.from(req.get(sigHeaderName) || '', 'utf8')
-    const hmac = crypto.createHmac(sigHashAlg, secret)
+    const checksum = Buffer.from(req.get('BTCPAY-SIG') || '', 'utf8')
+    const hmac = crypto.createHmac('sha256', secret)
     const digest = Buffer.from(
-      sigHashAlg + '=' + hmac.update(rawVar).digest('hex'),
+      'sha256=' + hmac.update(rawVar).digest('hex'),
       'utf8'
     )
-    const checksum = Buffer.from(sig, 'utf8')
     if (
       checksum.length !== digest.length ||
       !crypto.timingSafeEqual(digest, checksum)
