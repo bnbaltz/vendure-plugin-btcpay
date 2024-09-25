@@ -186,7 +186,7 @@ export class BTCPayService {
     const redirectUrl = method.handler.args.find(
       (arg) => arg.name === 'redirectUrl'
     );
-    if (!apiKey || !redirectUrl || !apiUrl || !storeId) {
+    if (!apiKey || !redirectUrl || !apiUrl || !secret || !storeId) {
       Logger.error(
         `CreatePaymentIntent failed, because no apiKey/apiUrl/storeId/secret/redirectUrl is configured for ${method.code}`,
         loggerCtx
