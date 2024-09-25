@@ -1,5 +1,5 @@
 import { AxiosInstance, AxiosResponse } from 'axios';
-import { ChargeInput, ChargeResult } from './coinbase.types';
+import { InvoiceInput, InvoiceResult } from './btcpay.types';
 import { Logger } from '@vendure/core';
 import { loggerCtx } from './constants';
 const axios = require('axios').default;
@@ -7,24 +7,21 @@ const axios = require('axios').default;
 export class BTCPayClient {
   private readonly client: AxiosInstance;
 
-  constructor(private config: { apiKey: string; apiVersion?: string }) {
-    this.config.apiVersion = this.config.apiVersion || '2018-03-22';
+  constructor(private config: { apiKey: string; apiUrl: string; storeId: string;}) {
     this.client = axios.create({
-      baseURL: 'https://api.commerce.coinbase.com',
+      baseURL: this.config.apiUrl + '/api/v1/stores/' + this.config.storeId,
     });
     this.client.defaults.headers.common['Content-Type'] = 'application/json';
-    this.client.defaults.headers.common['X-CC-Api-Key'] = this.config.apiKey;
-    this.client.defaults.headers.common['X-CC-Version'] =
-      this.config.apiVersion;
+    this.client.defaults.headers.common['Authorization'] = 'token ' + this.config.apiKey;
   }
 
-  async createCharge(input: ChargeInput): Promise<ChargeResult> {
-    const result = await this.client.post('/charges', input);
+  async createInvoice(input: InvoiceInput): Promise<InvoiceResult> {
+    const result = await this.client.post('/invoices', input);
     return this.validateResponse(result);
   }
 
-  async getCharge(id: string): Promise<ChargeResult> {
-    const result = await this.client.get(`/charges/${id}`);
+  async getInvoice(id: string): Promise<InvoiceResult> {
+    const result = await this.client.get(`/invoices/${id}`);
     return this.validateResponse(result);
   }
 

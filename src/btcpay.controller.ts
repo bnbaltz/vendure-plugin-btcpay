@@ -1,16 +1,16 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { Resolver, Mutation } from '@nestjs/graphql';
-import { CoinbaseService } from './coinbase.service';
+import { BTCPayService } from './btcppay.service';
 import { Ctx, Logger, RequestContext } from '@vendure/core';
 import { ChargeConfirmedWebhookEvent } from './coinbase.types';
 import { loggerCtx } from './constants';
 
 @Controller('payments')
-export class CoinbaseController {
-  constructor(private service: CoinbaseService) {}
+export class BTCPayController {
+  constructor(private service: BTCPayService) {}
 
-  @Post('coinbase')
-  async webhook(@Body() body: ChargeConfirmedWebhookEvent): Promise<void> {
+  @Post('btcpay')
+  async webhook(@Body() body: InvoiceConfirmedWebhookEvent): Promise<void> {
     try {
       await this.service.settlePayment(body.event);
     } catch (error: any) {
@@ -27,11 +27,11 @@ export class CoinbaseController {
 }
 
 @Resolver()
-export class CoinbaseResolver {
-  constructor(private service: CoinbaseService) {}
+export class BTCPayResolver {
+  constructor(private service: BTCPayService) {}
 
   @Mutation()
-  createCoinbasePaymentIntent(@Ctx() ctx: RequestContext): Promise<string> {
+  createBTCPayPaymentIntent(@Ctx() ctx: RequestContext): Promise<string> {
     return this.service.createPaymentIntent(ctx);
   }
 }

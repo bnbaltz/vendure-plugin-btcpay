@@ -4,26 +4,26 @@ import {
   VendurePlugin,
 } from '@vendure/core';
 import gql from 'graphql-tag';
-import { CoinbaseController, CoinbaseResolver } from './coinbase.controller';
-import { coinbaseHandler } from './coinbase.handler';
-import { CoinbaseService } from './coinbase.service';
+import { BTCPayController, BTCPayResolver } from './btcpay.controller';
+import { btcpayHandler } from './btcpay.handler';
+import { BTCPayService } from './btcpay.service';
 
 @VendurePlugin({
   imports: [PluginCommonModule],
-  controllers: [CoinbaseController],
-  providers: [CoinbaseService],
+  controllers: [BTCPayController],
+  providers: [BTCPayService],
   shopApiExtensions: {
     schema: gql`
       extend type Mutation {
-        createCoinbasePaymentIntent: String!
+        createBTCPayPaymentIntent: String!
       }
     `,
-    resolvers: [CoinbaseResolver],
+    resolvers: [BTCPayResolver],
   },
   compatibility: '>=2.2.0',
   configuration: (config: RuntimeVendureConfig) => {
-    config.paymentOptions.paymentMethodHandlers.push(coinbaseHandler);
+    config.paymentOptions.paymentMethodHandlers.push(btcpayHandler);
     return config;
   },
 })
-export class CoinbasePlugin {}
+export class BTCPayPlugin {}

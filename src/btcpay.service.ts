@@ -10,13 +10,13 @@ import {
   PaymentMethodService,
   RequestContext,
 } from '@vendure/core';
-import { coinbaseHandler } from './coinbase.handler';
+import { btcpayHandler } from './btcpay.handler';
 import { loggerCtx } from './constants';
-import { CoinbaseClient } from './coinbase.client';
-import { ChargeConfirmedWebhookEvent } from './coinbase.types';
+import { BTCPayClient } from './btcpay.client';
+import { InvoiceConfirmedWebhookEvent } from './btcpay.types';
 
 @Injectable()
-export class CoinbaseService {
+export class BTCPayService {
   constructor(
     private activeOrderService: ActiveOrderService,
     private orderService: OrderService,
@@ -44,29 +44,22 @@ export class CoinbaseService {
         'Cannot create payment intent for order without shippingMethod'
       );
     }
-    const { apiKey, redirectUrl } = await this.getCoinbasePaymentMethod(ctx);
-    const client = new CoinbaseClient({ apiKey });
-    const result = await client.createCharge({
-      name: `Order ${order.code}`,
-      description: `Order ${order.code}`,
-      local_price: {
-        amount: `${(order.totalWithTax / 100).toFixed(2)}`,
-        currency: order.currencyCode,
-      },
-      metadata: {
-        orderCode: order.code,
-        channelToken: ctx.channel.token,
-      },
-      pricing_type: 'fixed_price',
-      redirect_url: `${redirectUrl}/${order.code}`,
+    const { apiKey, apiUrl, storeId, redirectUrl } = await this.getBTCPayPaymentMethod(ctx);
+    const client = new BTCPayClient({ apiKey, apiUrl, storeId });
+    const result = await client.createInvoice({
+      amount: `${(order.totalWithTax / 100).toFixed(2)}`,
+      currency: order.currencyCode,
+      checkout: {
+        redirectURL: `${redirectUrl}/${order.code}`
+      }
     });
-    return result.data.hosted_url;
+    return result.data.checkoutLink;
   }
 
   async settlePayment(
-    event: ChargeConfirmedWebhookEvent['event']
+    event: InvoiceConfirmedWebhookEvent['event']
   ): Promise<void> {
-    if (event?.type !== 'charge:confirmed') {
+    if (event?.type !== 'charge:confirmed') { //need to change
       Logger.info(
         `Incoming webhook is of type ${event?.type} for order ${event?.data?.metadata?.orderCode}, not processing this event.`,
         loggerCtx
@@ -93,13 +86,13 @@ export class CoinbaseService {
       ),
       authorizedAsOwnerOnly: false,
     });
-    const { apiKey, method } = await this.getCoinbasePaymentMethod(ctx);
-    const client = new CoinbaseClient({ apiKey });
-    const charge = await client.getCharge(event.data.code);
-    console.log(JSON.stringify(charge));
-    if (!charge.data.confirmed_at) {
+    const { apiKey, apiUrl, storeId, method } = await this.getBTCPayPaymentMethod(ctx);
+    const client = new BTCPayClient({ apiKey, apiUrl, storeId });
+    const invoice = await client.getCharge(event.data.code);
+    console.log(JSON.stringify(invoice));
+    if (!invoice.data.confirmed_at) { // need to change
       Logger.error(
-        `Requested charge ${event.data.code} does not have 'confirmed_at' on Coinbase. This payment will not be settled.`,
+        `Requested charge ${event.data.code} does not have 'confirmed_at' on BTCPay. This payment will not be settled.`,
         loggerCtx
       );
       return;
@@ -145,31 +138,35 @@ export class CoinbaseService {
     Logger.info(`Payment for order ${orderCode} settled`, loggerCtx);
   }
 
-  private async getCoinbasePaymentMethod(ctx: RequestContext) {
+  private async getBTCPayPaymentMethod(ctx: RequestContext) {
     let { items } = await this.paymentMethodService.findAll(ctx);
     const method = items.find(
-      (item) => item.handler.code === coinbaseHandler.code
+      (item) => item.handler.code === btcpayHandler.code
     );
     if (!method) {
       throw Error(
-        `No paymentMethod configured with handler ${coinbaseHandler.code}`
+        `No paymentMethod configured with handler ${btcpayHandler.code}`
       );
     }
     const apiKey = method.handler.args.find((arg) => arg.name === 'apiKey');
+    const apiUrl = method.handler.args.find((arg) => arg.name === 'apiUrl');
+    const storeId = method.handler.args.find((arg) => arg.name === 'storeId');
     const redirectUrl = method.handler.args.find(
       (arg) => arg.name === 'redirectUrl'
     );
-    if (!apiKey || !redirectUrl) {
+    if (!apiKey || !redirectUrl || !apiUrl || !storeId) {
       Logger.error(
-        `CreatePaymentIntent failed, because no apiKey or redirect is configured for ${method.code}`,
+        `CreatePaymentIntent failed, because no apiKey/apiUrl/storeId/redirectUrl is configured for ${method.code}`,
         loggerCtx
       );
       throw Error(
-        `Paymentmethod ${method.code} has no apiKey, sharedSecret or redirectUrl configured`
+        `Paymentmethod ${method.code} has no apiKey, apiUrl, storeId, redirectUrl configured`
       );
     }
     return {
       apiKey: apiKey.value,
+      apiUrl: apiUrl.value,
+      storeId: storeId.value,
       redirectUrl: redirectUrl.value.endsWith('/')
         ? redirectUrl.value.slice(0, -1)
         : redirectUrl.value, // remove appending slash

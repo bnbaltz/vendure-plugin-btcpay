@@ -9,18 +9,26 @@ import {
 } from '@vendure/core';
 import { loggerCtx } from './constants';
 
-export const coinbaseHandler = new PaymentMethodHandler({
-  code: 'coinbase-payment-handler',
+export const btcpayHandler = new PaymentMethodHandler({
+  code: 'btcpay-payment-handler',
   description: [
     {
       languageCode: LanguageCode.en,
-      value: 'Coinbase payment',
+      value: 'BTCPay payment',
     },
   ],
   args: {
     apiKey: {
       type: 'string',
       label: [{ languageCode: LanguageCode.en, value: 'API Key' }],
+    },
+    apiUrl: {
+      type: 'string',
+      label: [{ languageCode: LanguageCode.en, value: 'BTCPay Instance URL' }],
+    },
+    storeId: {
+      type: 'string',
+      label: [{ languageCode: LanguageCode.en, value: 'BTCPay Store ID' }],
     },
     redirectUrl: {
       type: 'string',
@@ -62,14 +70,14 @@ export const coinbaseHandler = new PaymentMethodHandler({
     payment
   ): Promise<CreateRefundResult> => {
     Logger.warn(
-      `This plugin does not support refunds. You need to manually refund ${payment.transactionId} via Coinbase`,
+      `This plugin does not support refunds. You need to manually refund ${payment.transactionId} via BTCPay`,
       loggerCtx
     );
     return {
       state: 'Failed',
       metadata: {
         public: {
-          message: `This plugin does not support refunds. You need to manually refund ${payment.transactionId} via Coinbase`,
+          message: `This plugin does not support refunds. You need to manually refund ${payment.transactionId} via BTCPay`,
         },
       },
     };

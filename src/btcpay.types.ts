@@ -18,15 +18,9 @@ export interface Bitcoin {
   currency: string;
 }
 
-export interface Ethereum {
-  amount: string;
-  currency: string;
-}
-
 export interface Pricing {
   local: Local;
   bitcoin: Bitcoin;
-  ethereum: Ethereum;
 }
 
 export interface OverpaymentAbsoluteThreshold {
@@ -73,11 +67,11 @@ export interface Data {
   cancel_url: string;
 }
 
-export interface ChargeResult {
+export interface InvoiceResult {
   data: Data;
 }
 
-export interface ChargeInput {
+export interface InvoiceInput {
   name: string;
   description: string;
   local_price: {
@@ -92,7 +86,7 @@ export interface ChargeInput {
   redirect_url: string;
 }
 
-export interface ChargeConfirmedWebhookEvent {
+export interface InvoiceConfirmedWebhookEvent {
   event?: {
     id?: string;
     type?:
