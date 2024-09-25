@@ -63,7 +63,7 @@ export interface Data {
   payments: any[];
   payment_threshold: PaymentThreshold;
   addresses: Addresses;
-  redirect_url: string;
+  checkoutLink: string;
   cancel_url: string;
 }
 
@@ -72,18 +72,15 @@ export interface InvoiceResult {
 }
 
 export interface InvoiceInput {
-  name: string;
-  description: string;
-  local_price: {
-    amount: string;
-    currency: string;
+  amount: string;
+  currency: string;
+  checkout: {
+    redirectURL: string;
   };
-  metadata: {
+  metadata?: {
     orderCode: string;
     channelToken: string;
   };
-  pricing_type: 'fixed_price' | 'no_price';
-  redirect_url: string;
 }
 
 export interface InvoiceConfirmedWebhookEvent {

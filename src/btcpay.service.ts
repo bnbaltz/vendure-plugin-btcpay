@@ -14,6 +14,10 @@ import { btcpayHandler } from './btcpay.handler';
 import { loggerCtx } from './constants';
 import { BTCPayClient } from './btcpay.client';
 import { InvoiceConfirmedWebhookEvent } from './btcpay.types';
+import { Request } from 'express';
+import { https } from "firebase-functions";
+
+type FirebaseRequest = https.Request
 
 const crypto = require('crypto')
 const bodyParser = require('body-parser')
@@ -60,7 +64,8 @@ export class BTCPayService {
   }
 
   async settlePayment(
-    event: InvoiceConfirmedWebhookEvent['event'], req
+    event: InvoiceConfirmedWebhookEvent['event'],
+    req: Request
   ): Promise<void> {
     if (event?.type !== 'InvoiceSettled') {
       Logger.info(
@@ -92,7 +97,8 @@ export class BTCPayService {
     const { apiKey, apiUrl, storeId, secret, method } = await this.getBTCPayPaymentMethod(ctx);
     const sigHashAlg = 'sha256'
     const sigHeaderName = 'BTCPAY-SIG'
-    if (!req.rawBody) {
+    const rawVar = (req as FirebaseRequest).rawBody;
+    if (!rawVar) {
       throw Error(
         `Webhook body empty, cannot check signature`
       );
@@ -100,7 +106,7 @@ export class BTCPayService {
     const sig = Buffer.from(req.get(sigHeaderName) || '', 'utf8')
     const hmac = crypto.createHmac(sigHashAlg, secret)
     const digest = Buffer.from(
-      sigHashAlg + '=' + hmac.update(req.rawBody).digest('hex'),
+      sigHashAlg + '=' + hmac.update(rawVar).digest('hex'),
       'utf8'
     )
     const checksum = Buffer.from(sig, 'utf8')
